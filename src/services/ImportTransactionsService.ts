@@ -52,14 +52,39 @@ class ImportTransactionsService {
     );
 
     const newCategories = importedCategories
-      // search for duplicates
       .filter((value, index, array) => array.indexOf(value) === index)
-      // search for corresponding elements
       .filter(value => !databaseCategoriesTitle.includes(value));
 
-    console.log(newCategories);
+    const categoriesToSave = categoryRepository.create(
+      newCategories.map(item => ({ title: item })),
+    );
 
-    return null;
+    const savedCategories = await categoryRepository.save(categoriesToSave);
+
+    const categories = [...databaseCategories, ...savedCategories];
+
+    // const transactions = importedTransactions.map(item => ({
+    //   title: item.title,
+    //   value: item.value,
+    //   type: item.type,
+    //   category: categories.find(category => category.title === item.title),
+    // }));
+
+    const transactions = transactionsRepository.create(
+      importedTransactions.map(transaction => ({
+        title: transaction.title,
+        value: transaction.value,
+        type: transaction.type,
+        category: categories.find(
+          category => category.title === transaction.category,
+        ),
+      })),
+    );
+    await transactionsRepository.save(transactions);
+
+    fs.unlinkSync(filePath);
+
+    return transactions;
   }
 }
 
